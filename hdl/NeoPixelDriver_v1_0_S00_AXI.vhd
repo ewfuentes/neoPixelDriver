@@ -493,11 +493,11 @@ begin
                     npEnable <= '1'; -- Set the enable signal of the driver 
                 end if;
                 
-                if npIsEmpty = '1' and isEmptyTrigger ='0' and slv_reg0_out(1) = '1' then
+                if npIsEmpty = '1' and isEmptyTrigger ='0' and slv_reg0_out(0) = '1' then
                     -- The is empty flag has just been set
                     isEmptyTrigger <= '1';
                     npEnable <= '0';
-                    slv_reg0_out(1) <= '0';
+                    slv_reg0_out(0) <= '0';
                 end if;
                 
                 if isEmptyTrigger = '1' and slv_reg0_in(0) = '0' and slv_reg0_out(0) = '0' then
