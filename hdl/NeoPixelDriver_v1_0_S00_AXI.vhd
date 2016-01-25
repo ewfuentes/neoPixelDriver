@@ -5,7 +5,6 @@ use ieee.numeric_std.all;
 entity NeoPixel_v1_0_S00_AXI is
 	generic (
 		-- Users to add parameters here
-        inputClkRate : integer := 50000000;
 		-- User parameters ends
 		-- Do not modify the parameters beyond this line
     
@@ -17,6 +16,7 @@ entity NeoPixel_v1_0_S00_AXI is
 	port (
 		-- Users to add ports here
         NP_DATA_OUT : out std_logic;
+        NP_IS_EMPTY_INTERRUPT : out std_logic;
 		-- User ports ends
 		-- Do not modify the ports beyond this line
 
@@ -85,21 +85,26 @@ end NeoPixel_v1_0_S00_AXI;
 
 architecture arch_imp of NeoPixel_v1_0_S00_AXI is
     COMPONENT NeoPixelDriver is
-        Generic (
-            clk_rate : integer := inputClkRate);
         Port ( clk : in STD_LOGIC;
                en : in STD_LOGIC;
                dataIn : in STD_LOGIC_VECTOR(23 downto 0);
                dataOut : out STD_LOGIC;
                isEmpty: out STD_LOGIC;
-               busy: out STD_LOGIC := '0');
+               busy: out STD_LOGIC := '0';
+               bitTime: in integer;
+               oneTime: in integer;
+               zeroTime: in integer;
+               resetTime: in integer);
     end COMPONENT;
     
     signal npEnable : std_logic := '0';
     signal npDataIn : std_logic_vector(23 downto 0) := (others => '0');
     signal npIsEmpty : std_logic := '0';
     signal npIsBusy : std_logic := '0';
-    signal ledCounter : integer := 0;
+    signal npBitTime : integer := 0;
+    signal npOneTime : integer := 0;
+    signal npZeroTime : integer := 0;
+    signal npResetTime : integer := 0;
     signal isEmptyTrigger : std_logic := '0';
     
     
@@ -148,16 +153,17 @@ architecture arch_imp of NeoPixel_v1_0_S00_AXI is
 	signal byte_index	: integer;
 begin
     npDriver: NeoPixelDriver
-    GENERIC MAP (
-        clk_rate => inputClkRate
-    )
     PORT MAP (
         clk => S_AXI_ACLK,
         en => npEnable,
         dataIn => npDataIn,
         dataOut => NP_DATA_OUT,
         isEmpty => npIsEmpty,
-        busy => npIsBusy
+        busy => npIsBusy,
+        bitTime => npBitTime,
+        oneTime => npOneTime,
+        zeroTime => npZeroTime,
+        resetTime => npResetTime
     );
 	-- I/O Connections assignments
 
@@ -473,6 +479,17 @@ begin
 
 
 	-- Add user logic here
+	process (npIsEmpty, slv_reg0_in, slv_reg0_out, isEmptyTrigger) is
+	begin
+	   if rising_edge(npIsEmpty) then
+	       isEmptyTrigger <= '1';
+       end if;
+       
+       if isEmptyTrigger = '1' and slv_reg0_in(0) = '0' and slv_reg0_out(0) = '0' then
+           isEmptyTrigger <= '0';
+       end if;
+	end process;
+	
 	process (S_AXI_ACLK) is
     begin
         if rising_edge(S_AXI_ACLK) then
@@ -486,28 +503,42 @@ begin
                 slv_reg6_out<= (others => '0');
                 slv_reg7_out<= (others => '0');
             else
-                if isEmptyTrigger = '0' and slv_reg0_in(0) = '1' and slv_reg0_out(0) = '0' then 
+                if slv_reg0_in(0) = '1' then 
                     -- The enable bit has been set
-                    slv_reg0_out(0) <= '1'; -- Make sure the the bit gets read as set
                     npDataIn <= slv_reg2_in(23 downto 0); -- Copy register 2 to the dataIn port
-                    npEnable <= '1'; -- Set the enable signal of the driver 
+                    npEnable <= '1'; -- Set the enable signal of the driver
+                    NP_IS_EMPTY_INTERRUPT <= '0'; -- Clear the interrupt flag
+                    slv_reg1_out(1) <= '0';
                 end if;
                 
-                if npIsEmpty = '1' and isEmptyTrigger ='0' and slv_reg0_out(0) = '1' then
+                if isEmptyTrigger ='1' then
                     -- The is empty flag has just been set
-                    isEmptyTrigger <= '1';
                     npEnable <= '0';
-                    slv_reg0_out(0) <= '0';
+                    if slv_reg0_in(1) = '1' then
+                        NP_IS_EMPTY_INTERRUPT <= '1';
+                    end if;
+                    slv_reg1_out(1) <= '1';
                 end if;
-                
-                if isEmptyTrigger = '1' and slv_reg0_in(0) = '0' and slv_reg0_out(0) = '0' then
-                    isEmptyTrigger <= '0';
-                    slv_reg0_out(0) <= '0';
+                        
+                if slv_reg0_in(1) = '0' then
+                    NP_IS_EMPTY_INTERRUPT <= '0';
                 end if;
-                
+                                
                 slv_reg1_out(0) <= npIsBusy;
                 
+                slv_reg0_out <= slv_reg0_in;
                 
+                slv_reg3_out <= slv_reg3_in;
+                npBitTime <= to_integer(unsigned(slv_reg3_in));
+
+                slv_reg4_out <= slv_reg4_in;
+                npOneTime <= to_integer(unsigned(slv_reg4_in));
+                
+                slv_reg5_out <= slv_reg5_in;
+                npZeroTime <= to_integer(unsigned(slv_reg5_in));
+                
+                slv_reg6_out <= slv_reg6_in;
+                npResetTime <= to_integer(unsigned(slv_reg6_in));
                 
             end if;
         end if;

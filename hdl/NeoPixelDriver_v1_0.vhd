@@ -5,7 +5,6 @@ use ieee.numeric_std.all;
 entity NeoPixel_v1_0 is
 	generic (
 		-- Users to add parameters here
-        inputClkRate : integer := 50000000;
 		-- User parameters ends
 		-- Do not modify the parameters beyond this line
 
@@ -17,6 +16,7 @@ entity NeoPixel_v1_0 is
 	port (
 		-- Users to add ports here
         np_data_out : out std_logic;
+        np_isEmptyInterrupt : out std_logic;
 		-- User ports ends
 		-- Do not modify the ports beyond this line
 
@@ -51,13 +51,13 @@ architecture arch_imp of NeoPixel_v1_0 is
 	-- component declaration
 	component NeoPixel_v1_0_S00_AXI is
 		generic (
-		inputClkRate : integer := 50000000;
 		C_S_AXI_DATA_WIDTH	: integer	:= 32;
 		C_S_AXI_ADDR_WIDTH	: integer	:= 5
 		);
 		port (
 		NP_DATA_OUT : out std_logic;
-		
+		NP_IS_EMPTY_INTERRUPT : out std_logic;
+        		
 		S_AXI_ACLK	: in std_logic;
 		S_AXI_ARESETN	: in std_logic;
 		S_AXI_AWADDR	: in std_logic_vector(C_S_AXI_ADDR_WIDTH-1 downto 0);
@@ -87,12 +87,12 @@ begin
 -- Instantiation of Axi Bus Interface S00_AXI
 NeoPixel_v1_0_S00_AXI_inst : NeoPixel_v1_0_S00_AXI
 	generic map (
-	    inputClkRate => inputClkRate,
 		C_S_AXI_DATA_WIDTH	=> C_S00_AXI_DATA_WIDTH,
 		C_S_AXI_ADDR_WIDTH	=> C_S00_AXI_ADDR_WIDTH
 	)
 	port map (
 	    NP_DATA_OUT => np_data_out,
+	    NP_IS_EMPTY_INTERRUPT => np_isEmptyInterrupt,
 		S_AXI_ACLK	=> s00_axi_aclk,
 		S_AXI_ARESETN	=> s00_axi_aresetn,
 		S_AXI_AWADDR	=> s00_axi_awaddr,

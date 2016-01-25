@@ -5,14 +5,16 @@ use IEEE.NUMERIC_STD.ALL;
 use IEEE.MATH_REAL.ALL;
 
 entity NeoPixelDriver is
-    Generic (
-        clk_rate : integer := 50000000);
     Port ( clk : in STD_LOGIC;
            en : in STD_LOGIC;
            dataIn : in STD_LOGIC_VECTOR(23 downto 0);
            dataOut : out STD_LOGIC:= '0';
            isEmpty: out STD_LOGIC := '1';
-           busy: out STD_LOGIC := '0');
+           busy: out STD_LOGIC := '0';
+           bitTime: in integer := 125;
+           oneTime: in integer := 75;
+           zeroTime: in integer := 28;
+           resetTime: in integer := 50000);
 end NeoPixelDriver;
 
 architecture Behavioral of NeoPixelDriver is
@@ -21,12 +23,7 @@ architecture Behavioral of NeoPixelDriver is
     constant state_transmit : unsigned(1 downto 0) := "01";
     constant state_finish   : unsigned(1 downto 0) := "10";
     
--- other constants
-    constant bitTime : integer := integer(floor(real(clk_rate) / 800000.0));
-    constant zeroTime : integer := integer(floor(real(clk_rate) / 800000.0 * 0.3));
-    constant oneTime : integer := integer(floor(real(clk_rate) / 800000.0 * 0.6));
-    constant resetTime : integer := integer(floor(real(clk_rate) / 20000.0));
-      
+-- other constants  
     signal state : unsigned (1 downto 0) := state_idle;
     signal dataCopy : STD_LOGIC_VECTOR (23 downto 0) := (others => '0');
     signal bitCounter : integer := 0;
